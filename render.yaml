@@ -1,0 +1,13 @@
+
+services:
+  - type: web
+    name: promptscraper
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    repo: https://github.com/Jabulani00/promptScraper.git
+    branch: main
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.0
+    autoDeploy: true
