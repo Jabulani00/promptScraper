@@ -1,0 +1,13 @@
+prompt-scraper/
+├── app.py
+├── requirements.txt
+|--static/
+|  └── home.css
+└── templates/
+    └── index.html
+
+
+
+
+
+    to run app (python app.py)

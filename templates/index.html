@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt-Scraper</title>
+    <link rel="stylesheet" href="../css/home.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='home.css') }}">
+
+    <h1>Prompt Scraper Tool</h1>
+    <nav>
+        <ul>
+            <li><a href="/" class="active">Home</a></li>
+            <li><a href="/visualization">Data Visualization</a></li>
+        </ul>
+    </nav>
+</head>
+<body>
+    <div class="container">
+        <h1>Prompt-Scraper</h1>
+        <p class="subtitle">An advanced web scraping and internet search tool</p>
+        
+        <div class="tab-container">
+            <div class="tabs">
+                <button class="tab active" onclick="openTab(event, 'website-tab')">Website Analysis</button>
+                <button class="tab" onclick="openTab(event, 'search-tab')">Internet Search</button>
+            </div>
+            
+            <div id="website-tab" class="tab-content active">
+                <h2>Website Analysis</h2>
+                <p>Enter a URL to analyze and extract content from a specific website.</p>
+                
+                <form id="scrapeForm">
+                    <div class="form-group">
+                        <label for="url">Website URL:</label>
+                        <input type="url" id="url" name="url" placeholder="Enter website URL (e.g., example.com)" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="search_term">Filter Content (optional):</label>
+                        <input type="text" id="search_term" name="search_term" placeholder="Filter website content by this term">
+                    </div>
+                    
+                    <div class="buttons">
+                        <button type="submit">Analyze Website</button>
+                        <button type="reset">Clear</button>
+                    </div>
+                </form>
+            </div>
+            
+            <div id="search-tab" class="tab-content">
+                <h2>Internet Search</h2>
+                <p>Enter a prompt or query to search across the internet for relevant results.</p>
+                
+                <form id="searchForm">
+                    <div class="form-group">
+                        <label for="query">Search Query / Prompt:</label>
+                        <input type="text" id="query" name="query" placeholder="What would you like to search for?" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="num_results">Number of Results:</label>
+                        <input type="number" id="num_results" name="num_results" min="1" max="10" value="5">
+                    </div>
+                    
+                    <div class="buttons">
+                        <button type="submit">Search Internet</button>
+                        <button type="reset">Clear</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div id="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Processing request... Please wait.</p>
+        </div>
+        
+        <div id="error" class="error" style="display: none;"></div>
+        
+        <!-- Website Analysis Results -->
+        <div id="website-results" style="display: none;">
+            <h2>Website Analysis Results</h2>
+            <div id="analyzed-url"></div>
+            
+            <h3 id="pageTitle"></h3>
+            
+            <!-- Website Overview Section -->
+            <div class="meta-section">
+                <h3>Website Overview</h3>
+                <div id="domain-info"></div>
+                
+                <button class="collapsible">Technologies Detected</button>
+                <div class="collapse-content">
+                    <div id="tech-content"></div>
+                </div>
+                
+                <button class="collapsible">Meta Tags</button>
+                <div class="collapse-content">
+                    <div id="meta-content"></div>
+                </div>
+            </div>
+            
+            <!-- Stats Section -->
+            <div id="stats-container"></div>
+            
+            <!-- Tabs for different content types -->
+            <div class="tab-container">
+                <div class="tabs" id="content-tabs">
+                    <button class="tab active" onclick="openContentTab(event, 'paragraphs-tab')">Paragraphs</button>
+                    <button class="tab" onclick="openContentTab(event, 'headers-tab')">Headers</button>
+                    <button class="tab" onclick="openContentTab(event, 'links-tab')">Links</button>
+                    <button class="tab" onclick="openContentTab(event, 'images-tab')">Images</button>
+                    <button class="tab" onclick="openContentTab(event, 'forms-tab')">Forms</button>
+                    <button class="tab" onclick="openContentTab(event, 'resources-tab')">Resources</button>
+                </div>
+                
+                <div id="paragraphs-tab" class="tab-content active">
+                    <h3>Paragraphs</h3>
+                    <div id="paragraphContent"></div>
+                </div>
+                
+                <div id="headers-tab" class="tab-content">
+                    <h3>Headers</h3>
+                    <div id="headerContent"></div>
+                </div>
+                
+                <div id="links-tab" class="tab-content">
+                    <h3>Links</h3>
+                    <div id="linkContent"></div>
+                </div>
+                
+                <div id="images-tab" class="tab-content">
+                    <h3>Images</h3>
+                    <div id="imageContent"></div>
+                </div>
+                
+                <div id="forms-tab" class="tab-content">
+                    <h3>Forms</h3>
+                    <div id="formContent"></div>
+                </div>
+                
+                <div id="resources-tab" class="tab-content">
+                    <h3>External Resources</h3>
+                    <div class="flex-container">
+                        <div class="flex-item">
+                            <h4>Scripts</h4>
+                            <div id="scriptContent"></div>
+                        </div>
+                        <div class="flex-item">
+                            <h4>Stylesheets</h4>
+                            <div id="stylesheetContent"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Internet Search Results -->
+        <div id="search-results" style="display: none;">
+            <h2>Search Results</h2>
+            <p id="search-query"></p>
+            <div id="search-content"></div>
+        </div>
+    </div>
+
+    <script>
+        // Tab management functions
+        function openTab(evt, tabName) {
+            var i, tabcontent, tablinks;
+            
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+                tabcontent[i].classList.remove("active");
+            }
+            
+            tablinks = document.getElementsByClassName("tab");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].classList.remove("active");
+            }
+            
+            document.getElementById(tabName).style.display = "block";
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+        
+        function openContentTab(evt, tabName) {
+            var i, tabcontent, tablinks;
+            
+            tabcontent = document.querySelectorAll("#content-tabs + div");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+                tabcontent[i].classList.remove("active");
+            }
+            
+            tablinks = document.querySelectorAll("#content-tabs .tab");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].classList.remove("active");
+            }
+            
+            document.getElementById(tabName).style.display = "block";
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+        
+        // Collapsible functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            var coll = document.getElementsByClassName("collapsible");
+            for (var i = 0; i < coll.length; i++) {
+                coll[i].addEventListener("click", function() {
+                    this.classList.toggle("active-collapse");
+                    var content = this.nextElementSibling;
+                    if (content.style.maxHeight) {
+                        content.style.maxHeight = null;
+                    } else {
+                        content.style.maxHeight = content.scrollHeight + "px";
+                    }
+                });
+            }
+        });
+        
+        // Handle website scraping form submission
+        document.getElementById('scrapeForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Hide any previous results and errors
+            document.getElementById('website-results').style.display = 'none';
+            document.getElementById('search-results').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            
+            // Show loading indicator
+            document.getElementById('loading').style.display = 'block';
+            
+            // Get form data
+            const formData = new FormData(this);
+            
+            // Send POST request
+            fetch('/scrape', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide loading indicator
+                document.getElementById('loading').style.display = 'none';
+                
+                if (data.error) {
+                    // Show error message
+                    const errorElement = document.getElementById('error');
+                    errorElement.textContent = `Error: ${data.error}`;
+                    errorElement.style.display = 'block';
+                    return;
+                }
+                
+                // Show results
+                document.getElementById('website-results').style.display = 'block';
+                
+                // Set URL and page title
+                document.getElementById('analyzed-url').textContent = formData.get('url');
+                document.getElementById('pageTitle').textContent = data.title;
+                
+                // Fill domain info
+                let domainHtml = '<table class="meta-table">';
+                if (data.domain_info) {
+                    for (const [key, value] of Object.entries(data.domain_info)) {
+                        if (value && key !== 'error') {
+                            domainHtml += `<tr><td>${key.replace('_', ' ')}</td><td>${value}</td></tr>`;
+                        }
+                    }
+                    if (data.domain_info.error) {
+                        domainHtml += `<tr><td colspan="2">${data.domain_info.error}</td></tr>`;
+                    }
+                }
+                domainHtml += '</table>';
+                document.getElementById('domain-info').innerHTML = domainHtml;
+                
+                // Fill technologies
+                let techHtml = '';
+                if (data.technologies && data.technologies.length > 0) {
+                    data.technologies.forEach(tech => {
+                        techHtml += `<span class="tech-badge">${tech}</span>`;
+                    });
+                } else {
+                    techHtml = '<p>No technologies detected or identified.</p>';
+                }
+                document.getElementById('tech-content').innerHTML = techHtml;
+                
+                // Fill meta tags
+                let metaHtml = '<table class="meta-table">';
+                if (data.meta_tags && Object.keys(data.meta_tags).length > 0) {
+                    for (const [key, value] of Object.entries(data.meta_tags)) {
+                        metaHtml += `<tr><td>${key}</td><td>${value}</td></tr>`;
+                    }
+                } else {
+                    metaHtml += '<tr><td colspan="2">No meta tags found.</td></tr>';
+                }
+                metaHtml += '</table>';
+                document.getElementById('meta-content').innerHTML = metaHtml;
+                
+                // Update stats
+                let statsHtml = '';
+                if (data.stats) {
+                    for (const [key, value] of Object.entries(data.stats)) {
+                        let label = key.replace('_count', '').replace('_', ' ');
+                        label = label.charAt(0).toUpperCase() + label.slice(1);
+                        statsHtml += `
+                            <div class="stat-card">
+                                <h3>${value}</h3>
+                                <p>${label}s</p>
+                            </div>
+                        `;
+                    }
+                }
+                document.getElementById('stats-container').innerHTML = statsHtml;
+                
+                // Clear previous content
+                document.getElementById('paragraphContent').innerHTML = '';
+                document.getElementById('headerContent').innerHTML = '';
+                document.getElementById('linkContent').innerHTML = '';
+                document.getElementById('imageContent').innerHTML = '';
+                document.getElementById('formContent').innerHTML = '';
+                document.getElementById('scriptContent').innerHTML = '';
+                document.getElementById('stylesheetContent').innerHTML = '';
+                
+                // Add paragraphs
+                if (data.paragraphs.length === 0) {
+                    document.getElementById('paragraphContent').innerHTML = '<p class="no-results">No paragraphs found.</p>';
+                } else {
+                    data.paragraphs.forEach((paragraph, index) => {
+                        const div = document.createElement('div');
+                        div.className = 'result-item';
+                        div.innerHTML = `<strong>#${index + 1}:</strong> ${paragraph}`;
+                        document.getElementById('paragraphContent').appendChild(div);
+                    });
+                }
+                
+                // Add headers
+                if (!data.headers || Object.keys(data.headers).length === 0) {
+                    document.getElementById('headerContent').innerHTML = '<p class="no-results">No headers found.</p>';
+                } else {
+                    for (const [header, values] of Object.entries(data.headers)) {
+                        if (values.length > 0) {
+                            const headerDiv = document.createElement('div');
+                            headerDiv.innerHTML = `<h4>${header.toUpperCase()} Headers</h4>`;
+                            document.getElementById('headerContent').appendChild(headerDiv);
+                            
+                            values.forEach((value, index) => {
+                                const div = document.createElement('div');
+                                div.className = 'result-item';
+                                div.textContent = `${value}`;
+                                document.getElementById('headerContent').appendChild(div);
+                            });
+                        }
+                    }
+                }
+                
+                // Add links
+                if (data.links.length === 0) {
+                    document.getElementById('linkContent').innerHTML = '<p class="no-results">No links found.</p>';
+                } else {
+                    data.links.forEach(link => {
+                        const div = document.createElement('div');
+                        div.className = 'result-item';
+                        
+                        const a = document.createElement('a');
+                        a.href = link.href;
+                        a.textContent = link.text || link.href;
+                        a.target = '_blank';
+                        
+                        div.appendChild(a);
+                        if (link.text && link.href && link.text !== link.href) {
+                            const small = document.createElement('div');
+                            small.style.fontSize = '12px';
+                            small.style.color = '#666';
+                            small.textContent = link.href;
+                            div.appendChild(small);
+                        }
+                        
+                        document.getElementById('linkContent').appendChild(div);
+                    });
+                }
+                
+                // Add images
+                if (data.images.length === 0) {
+                    document.getElementById('imageContent').innerHTML = '<p class="no-results">No images found.</p>';
+                } else {
+                    data.images.forEach(image => {
+                        const div = document.createElement('div');
+                        div.className = 'result-item';
+                        
+                        const img = document.createElement('img');
+                        img.src = image.src;
+                        img.alt = image.alt;
+                        img.style.maxWidth = '200px';
+                        img.style.maxHeight = '200px';
+                        
+                        const p = document.createElement('p');
+                        p.innerHTML = `<strong>Alt text:</strong> ${image.alt}<br>
+                                      <strong>Source:</strong> <span style="word-break: break-all;">${image.src}</span>`;
+                        if (image.width || image.height) {
+                            p.innerHTML += `<br><strong>Size:</strong> ${image.width || 'auto'} × ${image.height || 'auto'}`;
+                        }
+                        
+                        div.appendChild(img);
+                        div.appendChild(p);
+                        document.getElementById('imageContent').appendChild(div);
+                    });
+                }
+                
+                // Add forms
+                if (!data.forms || data.forms.length === 0) {
+                    document.getElementById('formContent').innerHTML = '<p class="no-results">No forms found.</p>';
+                } else {
+                    data.forms.forEach((form, formIndex) => {
+                        const formDiv = document.createElement('div');
+                        formDiv.className = 'result-item';
+                        
+                        let formHtml = `<h4>Form #${formIndex + 1}</h4>`;
+                        formHtml += `<p><strong>Action:</strong> ${form.action || 'None'}</p>`;
+                        formHtml += `<p><strong>Method:</strong> ${form.method || 'GET'}</p>`;
+                        
+                        if (form.fields && form.fields.length > 0) {
+                            formHtml += '<p><strong>Fields:</strong></p><ul>';
+                            form.fields.forEach(field => {
+                                formHtml += `<li>${field.type || 'text'}: ${field.name || 'unnamed'} ${field.id ? '(id: ' + field.id + ')' : ''}</li>`;
+                            });
+                            formHtml += '</ul>';
+                        } else {
+                            formHtml += '<p>No fields found in this form.</p>';
+                        }
+                        
+                        formDiv.innerHTML = formHtml;
+                        document.getElementById('formContent').appendChild(formDiv);
+                    });
+                }
+                
+                // Add scripts
+                if (!data.scripts || data.scripts.length === 0) {
+                    document.getElementById('scriptContent').innerHTML = '<p class="no-results">No external scripts found.</p>';
+                } else {
+                    data.scripts.forEach(script => {
+                        const div = document.createElement('div');
+                        div.className = 'result-item';
+                        div.style.wordBreak = 'break-all';
+                        div.textContent = script;
+                        document.getElementById('scriptContent').appendChild(div);
+                    });
+                }
+                
+                // Add stylesheets
+                if (!data.stylesheets || data.stylesheets.length === 0) {
+                    document.getElementById('stylesheetContent').innerHTML = '<p class="no-results">No external stylesheets found.</p>';
+                } else {
+                    data.stylesheets.forEach(css => {
+                        const div = document.createElement('div');
+                        div.className = 'result-item';
+                        div.style.wordBreak = 'break-all';
+                        div.textContent = css;
+                        document.getElementById('stylesheetContent').appendChild(div);
+                    });
+                }
+            })
+            .catch(error => {
+                // Hide loading indicator
+                document.getElementById('loading').style.display = 'none';
+                
+                // Show error message
+                const errorElement = document.getElementById('error');
+                errorElement.textContent = `Error: ${error.message}`;
+                errorElement.style.display = 'block';
+            });
+        });
+        
+        // Handle internet search form submission
+        document.getElementById('searchForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Hide any previous results and errors
+            document.getElementById('website-results').style.display = 'none';
+            document.getElementById('search-results').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            
+            // Show loading indicator
+            document.getElementById('loading').style.display = 'block';
+            
+            // Get form data
+            const formData = new FormData(this);
+            const query = formData.get('query');
+            
+            // Send POST request
+            fetch('/search', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide loading indicator
+                document.getElementById('loading').style.display = 'none';
+                
+                if (data.error) {
+                    // Show error message
+                    const errorElement = document.getElementById('error');
+                    errorElement.textContent = `Error: ${data.error}`;
+                    errorElement.style.display = 'block';
+                    return;
+                }
+                
+                // Show results
+                document.getElementById('search-results').style.display = 'block';
+                
+                // Update search query display
+                document.getElementById('search-query').textContent = `Results for: "${data.query}"`;
+                
+                // Clear previous content
+                document.getElementById('search-content').innerHTML = '';
+                
+                // Add search results
+                if (!data.results || data.results.length === 0) {
+                    document.getElementById('search-content').innerHTML = '<p class="no-results">No results found for your query.</p>';
+                } else {
+                    data.results.forEach((result, index) => {
+                        const resultDiv = document.createElement('div');
+                        resultDiv.className = 'search-result';
+                        
+                        let resultHtml = '';
+                        if (result.error) {
+                            resultHtml = `
+                                <h3>Result #${index + 1}</h3>
+                                <div class="url">${result.url}</div>
+                                <p>Error retrieving details: ${result.error}</p>
+                            `;
+                        } else {
+                            resultHtml = `
+                                <h3>${result.title || `Result #${index + 1}`}</h3>
+                                <div class="url">${result.url}</div>
+                                <div class="description">${result.description || ''}</div>
+                                <p>${result.snippet || 'No content preview available.'}</p>
+                                <div>
+                                    <a href="${result.url}" target="_blank" class="btn-visit">Visit Website</a>
+                                    <a href="#" class="btn-scrape" data-url="${result.url}">Analyze This Website</a>
+                                </div>
+                            `;
+                        }
+                        
+                        resultDiv.innerHTML = resultHtml;
+                        document.getElementById('search-content').appendChild(resultDiv);
+                    });
+                    
+                    // Add click handlers for "Analyze This Website" buttons
+                    document.querySelectorAll('.btn-scrape').forEach(button => {
+                        button.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            const url = this.getAttribute('data-url');
+                            document.getElementById('url').value = url;
+                            document.getElementById('search_term').value = query;
+                            document.querySelector('#website-tab button[type="submit"]').click();
+                            document.querySelector('.tabs .tab:first-child').click();
+                        });
+                    });
+                }
+            })
+            .catch(error => {
+                // Hide loading indicator
+                document.getElementById('loading').style.display = 'none';
+                
+                // Show error message
+                const errorElement = document.getElementById('error');
+                errorElement.textContent = `Error: ${error.message}`;
+                errorElement.style.display = 'block';
+            });
+        });
+    </script>
+</body>
+</html>

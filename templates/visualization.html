@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Visualization & Analysis</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='home.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='visualization.css') }}">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Advanced Data Visualization & Analysis</h1>
+        <nav>
+            <ul>
+                <li><a href="/">Home</a></li>
+                <li><a href="/visualization" class="active">Data Visualization</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="upload-section">
+            <h2>Upload Your Data</h2>
+            <form id="upload-form" method="post" enctype="multipart/form-data" action="/upload_data">
+                <div class="file-inputs">
+                    <div class="file-input">
+                        <label for="file1">File 1 (Required):</label>
+                        <input type="file" id="file1" name="file1" accept=".csv,.xlsx,.xls" required>
+                    </div>
+                    <div class="file-input">
+                        <label for="file2">File 2 (Optional for comparison):</label>
+                        <input type="file" id="file2" name="file2" accept=".csv,.xlsx,.xls">
+                    </div>
+                </div>
+                <div class="analysis-options">
+                    <h3>Analysis Options</h3>
+                    <div class="option-group">
+                        <label><input type="checkbox" name="summary_stats" checked> Summary Statistics</label>
+                        <label><input type="checkbox" name="correlation" checked> Correlation Analysis</label>
+                        <label><input type="checkbox" name="outlier_detection" checked> Outlier Detection</label>
+                        <label><input type="checkbox" name="time_series" id="time-series-check"> Time Series Analysis</label>
+                        <div id="time-series-options" class="hidden">
+                            <label for="date-column">Date Column:</label>
+                            <input type="text" id="date-column" name="date_column" placeholder="e.g., Date">
+                        </div>
+                    </div>
+                </div>
+                <div class="visualization-options">
+                    <h3>Visualization Options</h3>
+                    <div class="option-group">
+                        <label><input type="checkbox" name="bar_chart" checked> Bar Charts</label>
+                        <label><input type="checkbox" name="line_chart" checked> Line Charts</label>
+                        <label><input type="checkbox" name="scatter_plot" checked> Scatter Plots</label>
+                        <label><input type="checkbox" name="histogram" checked> Histograms</label>
+                        <label><input type="checkbox" name="box_plot" checked> Box Plots</label>
+                        <label><input type="checkbox" name="heatmap" checked> Heatmaps</label>
+                    </div>
+                </div>
+                <button type="submit" class="analyze-btn">Analyze Data</button>
+            </form>
+        </section>
+
+        <section class="results-section" id="results-section">
+            {% if analysis_results %}
+            <div class="data-preview">
+                <h2>Data Preview</h2>
+                <div class="tables-container">
+                    {% if df1_html %}
+                    <div class="table-container">
+                        <h3>File 1</h3>
+                        {{ df1_html|safe }}
+                    </div>
+                    {% endif %}
+                    {% if df2_html %}
+                    <div class="table-container">
+                        <h3>File 2</h3>
+                        {{ df2_html|safe }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="summary-stats">
+                <h2>Summary Statistics</h2>
+                {% if summary1_html %}
+                <div class="summary-container">
+                    <h3>File 1 Summary</h3>
+                    {{ summary1_html|safe }}
+                </div>
+                {% endif %}
+                {% if summary2_html %}
+                <div class="summary-container">
+                    <h3>File 2 Summary</h3>
+                    {{ summary2_html|safe }}
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="visualizations">
+                <h2>Visualizations</h2>
+                {% for viz in visualizations %}
+                <div class="viz-container">
+                    <h3>{{ viz.title }}</h3>
+                    {{ viz.plot|safe }}
+                    <div class="viz-description">
+                        <p>{{ viz.description }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% if comparison_results %}
+            <div class="comparison-results">
+                <h2>Comparison Analysis</h2>
+                {{ comparison_results|safe }}
+            </div>
+            {% endif %}
+
+            {% if correlation_plot %}
+            <div class="correlation-analysis">
+                <h2>Correlation Analysis</h2>
+                {{ correlation_plot|safe }}
+            </div>
+            {% endif %}
+
+            {% if outliers %}
+            <div class="outlier-detection">
+                <h2>Outlier Detection</h2>
+                {{ outliers|safe }}
+            </div>
+            {% endif %}
+
+            {% if insights %}
+            <div class="insights">
+                <h2>Key Insights</h2>
+                <ul>
+                    {% for insight in insights %}
+                    <li>{{ insight }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            {% endif %}
+        </section>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const timeSeriesCheck = document.getElementById('time-series-check');
+            const timeSeriesOptions = document.getElementById('time-series-options');
+            
+            timeSeriesCheck.addEventListener('change', function() {
+                if (this.checked) {
+                    timeSeriesOptions.classList.remove('hidden');
+                } else {
+                    timeSeriesOptions.classList.add('hidden');
+                }
+            });
+
+            // Column selection update based on file
+            const file1Input = document.getElementById('file1');
+            file1Input.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file && file.name.endsWith('.csv')) {
+                    Papa.parse(file, {
+                        header: true,
+                        preview: 1,
+                        complete: function(results) {
+                            updateColumnOptions(results.meta.fields);
+                        }
+                    });
+                }
+            });
+
+            function updateColumnOptions(columns) {
+                // This function would be expanded to dynamically create column selection dropdowns
+                console.log("Available columns:", columns);
+            }
+        });
+    </script>
+</body>
+</html>
